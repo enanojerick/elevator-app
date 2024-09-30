@@ -8,7 +8,7 @@ namespace Elevator.Contracts
         ElevatorDto GetElevatorById(int carId);
         ElevatorProgressDto GetElevatorProgressByCarId(int carId);
         ElevatorRequestDto QueueElevatorRequest(ElevatorRequestDto request);
-        ElevatorDto UpdateElevatorThreadId(ElevatorDto elevator);
+        ElevatorDto? ResetElevatorFloor(int carId);
         void MoveElevator(ElevatorRequestDto request, ElevatorDto elevator);
     }
 }

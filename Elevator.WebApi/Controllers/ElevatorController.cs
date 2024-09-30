@@ -87,6 +87,15 @@ namespace Elevator.WebApi.Controllers
             return "Queue Added to : " + elevator.CarName;
         }
 
+        [HttpPost]
+        [Route("Reset/Elevator/Floor/{carId}")]
+        public string RunElevator3(int carId)
+        {
+            var elevator = _elevatorServices.ResetElevatorFloor(carId);
+
+            return elevator == null ? "No Elevator associated with the Id" : elevator.CarName + " reset to Top Floor";
+        }
+
         private ElevatorRequestDto SetClientRequest(ClientRequest clientRequest, int carId)
         {
             return new ElevatorRequestDto()

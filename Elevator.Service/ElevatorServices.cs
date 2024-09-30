@@ -31,8 +31,7 @@ namespace Elevator.Service
             {
                 CarId = elevator.CarId,
                 CarName = elevator.CarName,
-                CurrentFloor = elevator.CurrentFloor,
-                ManageThreadId = elevator.ManageThreadId
+                CurrentFloor = elevator.CurrentFloor
             };
         }
 
@@ -132,15 +131,17 @@ namespace Elevator.Service
             return SetElevatorRequestDtoList(iRequest);
         }
 
-        public ElevatorDto UpdateElevatorThreadId(ElevatorDto elevator)
+        public ElevatorDto? ResetElevatorFloor(int carId)
         {
             var iElevator = (from e in _DbElevators.GetAll()
-                            where e.CarId == elevator.CarId
-                            select e).FirstOrDefault();
+                            where e.CarId == carId
+                             select e).FirstOrDefault();
 
-            iElevator.ManageThreadId = elevator.ManageThreadId;
+            if (iElevator == null) return null;
 
-            var savedElevator =  _DbElevators.Update(iElevator, m => m.CarId == elevator.CarId);
+            iElevator.CurrentFloor = 10;
+
+            var savedElevator =  _DbElevators.Update(iElevator, m => m.CarId == carId);
 
             return SetElevatorDto(savedElevator);
         }
@@ -184,6 +185,13 @@ namespace Elevator.Service
         {
             ElevatorProgressDto queueProgress = new ElevatorProgressDto();
 
+            FileStream ostrm;
+            StreamWriter writer;
+            TextWriter oldOut = Console.Out;
+
+            ostrm = new FileStream("./" + elevator.CarName + ".txt", FileMode.OpenOrCreate, FileAccess.Write);
+            writer = new StreamWriter(ostrm);
+
             _DbElevatorProgress.Delete(x => x.CarId == elevator.CarId);
 
             request.RequestedFloors.Append(request.RequestedFromFloor);
@@ -200,12 +208,16 @@ namespace Elevator.Service
 
             _DbElevatorProgress.Insert(iprogress);
 
-            for(int x = 0; x < queueProgress.RideLoopCount; x++)
-            {              
+            Console.SetOut(writer);
+
+            for (int x = 0; x < queueProgress.RideLoopCount; x++)
+            {
+                var currentRideLoopCount = queueProgress.RideLoopCount;
                 elevator = GetElevatorById(request.CarId);
                 var elevatorRequests = GetElevatorRequestsByCarId(request.CarId);
                 queueProgress = GetElevatorProgressByCarId(elevator.CarId.Value);
 
+                queueProgress.RideLoopCount = currentRideLoopCount;
                 queueProgress.CurrentStatus = (int)ElevatorStatusEnum.MOVING;
 
                 Console.WriteLine(elevator.CarName + " is in floor : " + elevator.CurrentFloor);
@@ -259,11 +271,8 @@ namespace Elevator.Service
                     
                 }
 
-                //Get Latest Elevator Progress from DB
-                var updateProgress = GetElevatorProgressByCarId(elevator.CarId.Value);
-
                 //Update Distance
-                var updateDistance = GetRideProgressQueue(elevator.CarId.Value, elevator.CurrentFloor.Value, queueProgress.CurrentDirection, updateProgress.CurrentFloorsQueued);
+                var updateDistance = GetRideProgressQueue(elevator.CarId.Value, elevator.CurrentFloor.Value, queueProgress.CurrentDirection, queueProgress.CurrentFloorsQueued);
 
                 //Add loop from updated queue
                 queueProgress.RideLoopCount = updateDistance.RideLoopCount > queueProgress.RideLoopCount ? (updateDistance.RideLoopCount - queueProgress.RideLoopCount) + queueProgress.RideLoopCount : queueProgress.RideLoopCount;
@@ -273,12 +282,14 @@ namespace Elevator.Service
 
                 //Update Elevator Progress Data
                 UpdateElevatorProgress(queueProgress);
-
-                if ((x + 1) == queueProgress.RideLoopCount)
-                {
-                    _DbElevatorProgress.Delete(x => x.CarId == elevator.CarId);
-                }
             }
+
+            //Remove once stopped
+            _DbElevatorProgress.Delete(x => x.CarId == elevator.CarId);
+
+            Console.SetOut(oldOut);
+            writer.Close();
+            ostrm.Close();
         }
 
         #endregion
@@ -348,8 +359,8 @@ namespace Elevator.Service
             }
 
             //Get Distance travel count
-            var originalDirectionDistance = currentDirectionFloors != null ? ComputeDistance(currentDirectionFloors, currentFloor) : 0;
-            var oppositeDirectionDistance = oppositeDirectionFloors != null ? ComputeDistance(oppositeDirectionFloors, currentDirectionFloors.Last()) : 0;
+            var originalDirectionDistance = currentDirectionFloors != null || currentDirectionFloors.Count() > 0 ? ComputeDistance(currentDirectionFloors, currentFloor) : 0;
+            var oppositeDirectionDistance = oppositeDirectionFloors != null || oppositeDirectionFloors.Count() > 0 ? ComputeDistance(oppositeDirectionFloors, currentDirectionFloors.Last()) : 0;
 
             var rideCount = originalDirectionDistance + oppositeDirectionDistance;
 
