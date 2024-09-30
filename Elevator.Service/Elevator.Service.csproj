@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="ElevatorServices.cs~RF197c567.TMP" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Elevator.Contracts\Elevator.Contracts.csproj" />
+    <ProjectReference Include="..\Elevator.DataRepository\Elevator.Data.Repository.csproj" />
+    <ProjectReference Include="..\Elevator.Data\Elevator.Data.csproj" />
+    <ProjectReference Include="..\Elevator.Dto\Elevator.Dto.csproj" />
+  </ItemGroup>
+
+</Project>

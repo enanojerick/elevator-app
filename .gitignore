@@ -1,0 +1,15 @@
+Elevator.WebApi/obj/Debug/*
+Elevator.WebApi/bin/*
+Elevator.Service/obj/*
+Elevator.Service/bin/*
+Elevator.WebApi/obj/*
+Elevator.DataRepository/obj/*
+Elevator.Dto/obj/*
+Elevator.DataRepository/bin/*
+Elevator.Data/obj/*
+Elevator.Data/bin/*
+Elevator.Contracts/obj/*
+Elevator.ConsoleApp/obj/*
+Elevator.Contracts/bin/*
+Elevator.Dto/bin/*
+.vs/*
