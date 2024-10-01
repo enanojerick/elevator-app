@@ -183,20 +183,22 @@ namespace Elevator.Service
 
         public void MoveElevator(ElevatorRequestDto request, ElevatorDto elevator)
         {
-            ElevatorProgressDto queueProgress = new ElevatorProgressDto();
+            _DbElevatorRequest.Delete(m => m.CarId == request.CarId);
 
-            FileStream ostrm;
-            StreamWriter writer;
-            TextWriter oldOut = Console.Out;
+            int rideLoop = 0;
 
-            ostrm = new FileStream("./" + elevator.CarName + ".txt", FileMode.OpenOrCreate, FileAccess.Write);
-            writer = new StreamWriter(ostrm);
+            int destinationFloor = request.RequestedFromFloor;
 
             _DbElevatorProgress.Delete(x => x.CarId == elevator.CarId);
 
             request.RequestedFloors.Append(request.RequestedFromFloor);
 
-            queueProgress = GetRideProgressQueue(request.CarId, elevator.CurrentFloor.Value, request.RequestedDirection, request.RequestedFloors);
+            ElevatorProgressDto queueProgress = new ElevatorProgressDto()
+            {
+                CarId = request.CarId,
+                CurrentDirection = request.RequestedDirection,
+                CurrentFloorsQueued = request.RequestedFloors,         
+            };
 
             var iprogress = new dbElevatorProgress()
             {
@@ -208,21 +210,22 @@ namespace Elevator.Service
 
             _DbElevatorProgress.Insert(iprogress);
 
-            Console.SetOut(writer);
+            rideLoop = request.RequestedFromFloor > elevator.CurrentFloor.Value ? destinationFloor - elevator.CurrentFloor.Value : elevator.CurrentFloor.Value - destinationFloor;
 
-            for (int x = 0; x < queueProgress.RideLoopCount; x++)
+            for (int x = 0; x < rideLoop; x++)
             {
-                var currentRideLoopCount = queueProgress.RideLoopCount;
                 elevator = GetElevatorById(request.CarId);
+
                 var elevatorRequests = GetElevatorRequestsByCarId(request.CarId);
+
                 queueProgress = GetElevatorProgressByCarId(elevator.CarId.Value);
 
-                queueProgress.RideLoopCount = currentRideLoopCount;
                 queueProgress.CurrentStatus = (int)ElevatorStatusEnum.MOVING;
 
+                // Move the Elevator
                 Console.WriteLine(elevator.CarName + " is in floor : " + elevator.CurrentFloor);
                 Console.WriteLine("Moving " + elevator.CarName + "...");
-                
+
                 Thread.Sleep(10000);
 
                 if (queueProgress.CurrentDirection == (int)ElevatorDirectionEnum.UP)
@@ -239,21 +242,24 @@ namespace Elevator.Service
 
                 Console.WriteLine(elevator.CarName + " is now in floor : " + elevator.CurrentFloor);
 
-                if (queueProgress.CurrentFloorsQueued.Contains(elevator.CurrentFloor.Value))
+                var requestedFloor = elevatorRequests.Where(m => m.RequestedFromFloor == elevator.CurrentFloor && m.RequestedDirection == queueProgress.CurrentDirection).FirstOrDefault();
+
+                // Update Elevator path from another request
+                if (requestedFloor != null)
+                {
+                    queueProgress.CurrentFloorsQueued = queueProgress.CurrentFloorsQueued.Concat(requestedFloor.RequestedFloors).Distinct().ToArray();
+
+                    //Remove Request because floor is reached and added to main queue
+                    _DbElevatorRequest.Delete(m => m.RequestId == requestedFloor.RequestId);
+
+                }
+
+                // Open Elevator if Destination floor reached
+                if (elevator.CurrentFloor.Value == destinationFloor || requestedFloor != null)
                 {
                     Console.WriteLine(elevator.CarName + " reached requested destination floor : " + elevator.CurrentFloor);
-                    
+
                     queueProgress.CurrentStatus = (int)ElevatorStatusEnum.OPEN;
-
-                    var requestedFloor = elevatorRequests.Where(m => m.RequestedFromFloor == elevator.CurrentFloor && m.RequestedDirection == queueProgress.CurrentDirection).FirstOrDefault();
-
-                    if (requestedFloor != null)
-                    {
-                        queueProgress.CurrentFloorsQueued = queueProgress.CurrentFloorsQueued.Concat(requestedFloor.RequestedFloors).Distinct().ToArray();
-
-                        //Remove Request because floor is reached and added to main queue
-                        _DbElevatorRequest.Delete(m => m.RequestId == requestedFloor.RequestId);
-                    }
 
                     //Remove Current Floor
                     queueProgress.CurrentFloorsQueued = queueProgress.CurrentFloorsQueued.Where(floor => floor != elevator.CurrentFloor).ToArray();
@@ -267,29 +273,57 @@ namespace Elevator.Service
                     Console.WriteLine(elevator.CarName + " Closing...");
                     Thread.Sleep(2000);
 
-                    queueProgress.CurrentStatus = (int)ElevatorStatusEnum.MOVING;   
-                    
+                    int[] currentDirectionFloorArr;
+
+                    // Check if current destination still has floors queued
+                    if (queueProgress.CurrentDirection == (int)ElevatorDirectionEnum.UP)
+                    {
+                        currentDirectionFloorArr = queueProgress.CurrentFloorsQueued.Where(m => m > elevator.CurrentFloor).ToArray();
+
+                        if (currentDirectionFloorArr.Count() == 0)
+                        {
+                            queueProgress.CurrentDirection = (int)ElevatorDirectionEnum.DOWN;
+                            currentDirectionFloorArr = queueProgress.CurrentFloorsQueued.Where(m => m < elevator.CurrentFloor).ToArray();
+
+                        }
+                    }
+                    else 
+                    {
+                        currentDirectionFloorArr = queueProgress.CurrentFloorsQueued.Where(m => m < elevator.CurrentFloor).ToArray();
+
+                        if (currentDirectionFloorArr.Count() == 0)
+                        {
+                            queueProgress.CurrentDirection = (int)ElevatorDirectionEnum.UP;
+                            currentDirectionFloorArr = queueProgress.CurrentFloorsQueued.Where(m => m > elevator.CurrentFloor).ToArray();
+
+                        }     
+                    }
+
+                    destinationFloor = currentDirectionFloorArr.Count() > 0 ? currentDirectionFloorArr.OrderBy(item => Math.Abs(elevator.CurrentFloor.Value - item)).First() : 0;
+
+                    // Check if there is still a destination floor
+                    if (destinationFloor == 0)
+                    {
+                        queueProgress.CurrentStatus = (int)ElevatorStatusEnum.STOPPED;
+                        Console.WriteLine(elevator.CarName + " has Stopped...");
+                    }
+                    else
+                    {
+                        var toNextrideLoop = destinationFloor > elevator.CurrentFloor.Value ? destinationFloor - elevator.CurrentFloor.Value : elevator.CurrentFloor.Value - destinationFloor;
+
+                        rideLoop = rideLoop + toNextrideLoop;
+
+                        queueProgress.CurrentStatus = (int)ElevatorStatusEnum.MOVING;
+                    }
+
+                   
                 }
 
-                //Update Distance
-                var updateDistance = GetRideProgressQueue(elevator.CarId.Value, elevator.CurrentFloor.Value, queueProgress.CurrentDirection, queueProgress.CurrentFloorsQueued);
-
-                //Add loop from updated queue
-                queueProgress.RideLoopCount = updateDistance.RideLoopCount > queueProgress.RideLoopCount ? (updateDistance.RideLoopCount - queueProgress.RideLoopCount) + queueProgress.RideLoopCount : queueProgress.RideLoopCount;
-
-                //Update Queued floors
-                queueProgress.CurrentFloorsQueued = updateDistance.CurrentFloorsQueued;
-
-                //Update Elevator Progress Data
                 UpdateElevatorProgress(queueProgress);
             }
 
             //Remove once stopped
             _DbElevatorProgress.Delete(x => x.CarId == elevator.CarId);
-
-            Console.SetOut(oldOut);
-            writer.Close();
-            ostrm.Close();
         }
 
         #endregion
@@ -322,102 +356,6 @@ namespace Elevator.Service
             var savedElevatorProgress = _DbElevatorProgress.UpdateSpecificValuesNotNull(iElevatorProgress, x => x.CarId == iElevatorProgress.CarId);
 
             return SetElevatorProgressDto(savedElevatorProgress);
-        }
-        private ElevatorProgressDto GetRideProgressQueue(int carId, int currentFloor, int currentDirection, int[] requestedFloors)
-        {
-            int nextDirection = currentDirection;
-            int[] currentDirectionFloors;
-            int[] oppositeDirectionFloors;
-
-            //Make Floors Distinct
-            requestedFloors = requestedFloors.Distinct().ToArray();
-
-            //Remove Current Floor from Queue
-            if (requestedFloors.Contains(currentFloor))
-            {
-                requestedFloors = requestedFloors.Where(x => x != currentFloor).ToArray();
-            }
-
-            //Initialize Directional Arrays
-            var upfloors = requestedFloors.Where(e => e > currentFloor).Order().ToArray();
-            var downfloors = requestedFloors.Where(e => e < currentFloor).Order().ToArray();
-
-            //Change Direction if Conditions are made
-            if ((currentFloor == 10 && currentDirection == (int)ElevatorDirectionEnum.UP) || upfloors == null) currentDirection = (int)ElevatorDirectionEnum.DOWN;
-            if ((currentFloor == 1 && currentDirection == (int)ElevatorDirectionEnum.DOWN) || downfloors == null) currentDirection = (int)ElevatorDirectionEnum.UP;
-
-            //Get Routes and Sort by travel
-            if (currentDirection == (int)ElevatorDirectionEnum.UP)
-            {
-                currentDirectionFloors = upfloors.Order().ToArray();
-                oppositeDirectionFloors = downfloors.OrderDescending().ToArray();
-            }
-            else
-            {
-                currentDirectionFloors = downfloors.Order().ToArray();
-                oppositeDirectionFloors = upfloors.OrderDescending().ToArray();
-            }
-
-            //Get Distance travel count
-            var originalDirectionDistance = currentDirectionFloors != null || currentDirectionFloors.Count() > 0 ? ComputeDistance(currentDirectionFloors, currentFloor) : 0;
-            var oppositeDirectionDistance = oppositeDirectionFloors != null || oppositeDirectionFloors.Count() > 0 ? ComputeDistance(oppositeDirectionFloors, currentDirectionFloors.Last()) : 0;
-
-            var rideCount = originalDirectionDistance + oppositeDirectionDistance;
-
-            //Combine Directional Routes
-            var routes = oppositeDirectionFloors != null ? currentDirectionFloors.Concat(oppositeDirectionFloors).ToArray() : currentDirectionFloors;
-
-            return new ElevatorProgressDto()
-            {
-                CarId = carId,
-                CurrentDirection = currentDirection,
-                CurrentStatus = (int)ElevatorStatusEnum.STOPPED,
-                RideLoopCount = rideCount,
-                CurrentFloorsQueued = routes
-            };
-        }
-
-        private int ComputeDistance(int[] floors, int inputFloor)
-        {
-            int rideCount = 0;
-            int nextFloor = 0;
-            foreach (var floor in floors)
-            {
-                if (rideCount == 0)
-                {
-                    rideCount = floor > inputFloor ? floor - inputFloor
-                                                   : inputFloor - floor;
-
-                    nextFloor = floor;
-
-                }
-                else
-                {
-                    var distance = floor > nextFloor ? floor - nextFloor
-                                                     : nextFloor - floor;
-
-                    nextFloor = floor;
-                    rideCount = rideCount + distance;
-                }
-            }
-
-            return rideCount;
-        }
-
-        private void AddRequestToQueue(ElevatorRequestDto request, int currentFloor)
-        {
-            var savedProgress = GetElevatorProgressByCarId(request.CarId);
-            var queueProgress = GetRideProgressQueue(savedProgress.CarId, currentFloor, request.RequestedDirection, request.RequestedFloors);
-
-            var iprogress = new dbElevatorProgress()
-            {
-                CarId = request.CarId,
-                CurrentDirection = request.RequestedDirection,
-                CurrentStatus = queueProgress.CurrentStatus,
-                CurrentFloorsQueued = JsonConvert.SerializeObject(queueProgress.CurrentFloorsQueued)
-            };
-
-            _DbElevatorProgress.Update(iprogress, m => m.CarId == iprogress.CarId);
         }
         #endregion
 

@@ -24,6 +24,7 @@ builder.Services.AddScoped<IElevatorServices, ElevatorServices>();
 builder.Services.AddScoped(typeof(IRepository<>), typeof(DataRepository<>));
 builder.Services.AddTransient<IContext, ElevatorDbContext>();
 builder.Services.AddSwaggerGen();
+builder.Logging.ClearProviders();
 
 var app = builder.Build();
 
