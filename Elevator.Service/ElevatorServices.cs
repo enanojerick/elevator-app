@@ -4,6 +4,7 @@ using Elevator.Data.Repository.Interface;
 using Elevator.Dto;
 using Elevator.Dto.Enums;
 using Newtonsoft.Json;
+using System.Net;
 
 namespace Elevator.Service
 {
@@ -113,24 +114,6 @@ namespace Elevator.Service
             return SetElevatorDto(elevator);
         }
 
-        public ElevatorProgressDto GetElevatorProgressByCarId(int carId)
-        {
-            var progress = (from p in _DbElevatorProgress.GetAll()
-                            where p.CarId == carId
-                            select p).FirstOrDefault();
-
-            return SetElevatorProgressDto(progress);
-        }
-
-        public IList<ElevatorRequestDto> GetElevatorRequestsByCarId(int carId) 
-        {
-            var iRequest = (from e in _DbElevatorRequest.GetAll()
-                            where e.CarId == carId
-                            select e).ToList();
-
-            return SetElevatorRequestDtoList(iRequest);
-        }
-
         public ElevatorDto? ResetElevatorFloor(int carId)
         {
             var iElevator = (from e in _DbElevators.GetAll()
@@ -148,6 +131,8 @@ namespace Elevator.Service
 
         public ElevatorRequestDto QueueElevatorRequest(ElevatorRequestDto request)
         {
+            ElevatorRequestDto setRequest = new ElevatorRequestDto();
+
             var iRequest = (from r in _DbElevatorRequest.GetAll()
                             where r.RequestedDirection == request.RequestedDirection
                             && r.CarId == request.CarId
@@ -161,8 +146,7 @@ namespace Elevator.Service
                 iRequest.RequestedFloors = JsonConvert.SerializeObject(requestedfloorsArr);
 
                 var updateRequest = _DbElevatorRequest.Update(iRequest, m => m.RequestId == iRequest.RequestId);
-
-                return SetElevatorRequestDto(updateRequest);
+                setRequest = SetElevatorRequestDto(updateRequest);
             }
             else
             {
@@ -175,11 +159,11 @@ namespace Elevator.Service
                 };
 
                 var savedRequest = _DbElevatorRequest.Insert(iRequest);
+                setRequest = SetElevatorRequestDto(savedRequest);
+            }
 
-                return SetElevatorRequestDto(savedRequest);
-            }   
+            return setRequest != null ? setRequest : new ElevatorRequestDto();
         }
-
 
         public void MoveElevator(ElevatorRequestDto request, ElevatorDto elevator)
         {
@@ -215,11 +199,7 @@ namespace Elevator.Service
             for (int x = 0; x < rideLoop; x++)
             {
                 elevator = GetElevatorById(request.CarId);
-
-                var elevatorRequests = GetElevatorRequestsByCarId(request.CarId);
-
                 queueProgress = GetElevatorProgressByCarId(elevator.CarId.Value);
-
                 queueProgress.CurrentStatus = (int)ElevatorStatusEnum.MOVING;
 
                 // Move the Elevator
@@ -228,6 +208,7 @@ namespace Elevator.Service
 
                 Thread.Sleep(10000);
 
+                //
                 if (queueProgress.CurrentDirection == (int)ElevatorDirectionEnum.UP)
                 {
                     elevator.CurrentFloor = elevator.CurrentFloor  + 1;
@@ -242,6 +223,10 @@ namespace Elevator.Service
 
                 Console.WriteLine(elevator.CarName + " is now in floor : " + elevator.CurrentFloor);
 
+                //Get other queued request and add to main process queue
+                var elevatorRequests = GetElevatorRequestsByCarId(request.CarId);
+
+                //check if current floor has a request with the same direction
                 var requestedFloor = elevatorRequests.Where(m => m.RequestedFromFloor == elevator.CurrentFloor && m.RequestedDirection == queueProgress.CurrentDirection).FirstOrDefault();
 
                 // Update Elevator path from another request
@@ -257,6 +242,7 @@ namespace Elevator.Service
                 // Open Elevator if Destination floor reached
                 if (elevator.CurrentFloor.Value == destinationFloor || requestedFloor != null)
                 {
+                    var oldDestinationFloor = requestedFloor != null ? destinationFloor : 0;
                     Console.WriteLine(elevator.CarName + " reached requested destination floor : " + elevator.CurrentFloor);
 
                     queueProgress.CurrentStatus = (int)ElevatorStatusEnum.OPEN;
@@ -304,14 +290,39 @@ namespace Elevator.Service
                     // Check if there is still a destination floor
                     if (destinationFloor == 0)
                     {
-                        queueProgress.CurrentStatus = (int)ElevatorStatusEnum.STOPPED;
-                        Console.WriteLine(elevator.CarName + " has Stopped...");
+                        var elevatorRequestsAll = GetElevatorRequestsByCarId(request.CarId).OrderBy(m => m.RequestId).FirstOrDefault();
+
+                        if (elevatorRequestsAll != null)
+                        {
+                            // Get other request not part of main process path
+                            queueProgress.CurrentDirection = elevatorRequestsAll.RequestedDirection;
+                            queueProgress.CurrentFloorsQueued = elevatorRequestsAll.RequestedFloors;
+                            destinationFloor = elevatorRequestsAll.RequestedFromFloor;
+
+                            var newDistance = elevator.CurrentFloor.Value > elevatorRequestsAll.RequestedFromFloor ? elevator.CurrentFloor.Value - elevatorRequestsAll.RequestedFromFloor
+                                                                                                                   : elevatorRequestsAll.RequestedFromFloor - elevator.CurrentFloor.Value;
+                            rideLoop = rideLoop + newDistance;
+                            // Remove queued request
+                            _DbElevatorRequest.Delete(m => m.RequestId == elevatorRequestsAll.RequestId);
+                        }
+                        else
+                        {
+                            queueProgress.CurrentStatus = (int)ElevatorStatusEnum.STOPPED;
+                            Console.WriteLine(elevator.CarName + " has Stopped...");
+                        }
                     }
                     else
                     {
                         var toNextrideLoop = destinationFloor > elevator.CurrentFloor.Value ? destinationFloor - elevator.CurrentFloor.Value : elevator.CurrentFloor.Value - destinationFloor;
+                        int diffDistanceFromOldDestination = 0;
 
-                        rideLoop = rideLoop + toNextrideLoop;
+                        //if elevator opened due to another request needs to calculate new distance loop count
+                        if (requestedFloor != null)
+                        {
+                            diffDistanceFromOldDestination = oldDestinationFloor > elevator.CurrentFloor.Value ? oldDestinationFloor - elevator.CurrentFloor.Value : elevator.CurrentFloor.Value - oldDestinationFloor;
+                        }
+                        
+                        rideLoop = rideLoop + toNextrideLoop - diffDistanceFromOldDestination;
 
                         queueProgress.CurrentStatus = (int)ElevatorStatusEnum.MOVING;
                     }
@@ -319,6 +330,7 @@ namespace Elevator.Service
                    
                 }
 
+                // Save instance per elevator loop
                 UpdateElevatorProgress(queueProgress);
             }
 
@@ -329,6 +341,24 @@ namespace Elevator.Service
         #endregion
 
         #region Private Methods
+        private ElevatorProgressDto GetElevatorProgressByCarId(int carId)
+        {
+            var progress = (from p in _DbElevatorProgress.GetAll()
+                            where p.CarId == carId
+                            select p).FirstOrDefault();
+
+            return SetElevatorProgressDto(progress);
+        }
+
+        private IList<ElevatorRequestDto> GetElevatorRequestsByCarId(int carId)
+        {
+            var iRequest = (from e in _DbElevatorRequest.GetAll()
+                            where e.CarId == carId
+                            select e).ToList();
+
+            return SetElevatorRequestDtoList(iRequest);
+        }
+
         private ElevatorDto UpdateElevatorDetails(ElevatorDto elevator)
         {
             var iElevator = new dbElevator()

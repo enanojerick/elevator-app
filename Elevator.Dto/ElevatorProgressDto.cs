@@ -6,6 +6,5 @@
         public int CurrentStatus { get; set; }
         public int CurrentDirection { get; set; }
         public int[]? CurrentFloorsQueued { get; set; }
-        public int RideLoopCount { get; set; }
     }
 }

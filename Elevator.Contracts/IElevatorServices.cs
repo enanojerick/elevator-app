@@ -6,7 +6,6 @@ namespace Elevator.Contracts
     {
         IList<ElevatorDto> GetElevators();
         ElevatorDto GetElevatorById(int carId);
-        ElevatorProgressDto GetElevatorProgressByCarId(int carId);
         ElevatorRequestDto QueueElevatorRequest(ElevatorRequestDto request);
         ElevatorDto? ResetElevatorFloor(int carId);
         void MoveElevator(ElevatorRequestDto request, ElevatorDto elevator);
