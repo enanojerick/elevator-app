@@ -22,11 +22,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "1. Data", "1. Data", "{97C5
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "2. Infrastructure", "2. Infrastructure", "{CBD951C2-3352-48DB-A933-E801AF349999}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Elevator.Data.Repository", "Elevator.DataRepository\Elevator.Data.Repository.csproj", "{B21F3BA9-3B0B-4B36-B2A6-BA9D0C31ECF7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Elevator.Data.Repository", "Elevator.DataRepository\Elevator.Data.Repository.csproj", "{B21F3BA9-3B0B-4B36-B2A6-BA9D0C31ECF7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Elevator.Data", "Elevator.Data\Elevator.Data.csproj", "{21FAD450-5B3F-4A63-90F6-F90FC8032930}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Elevator.Data", "Elevator.Data\Elevator.Data.csproj", "{21FAD450-5B3F-4A63-90F6-F90FC8032930}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Elevator.Dto", "Elevator.Dto\Elevator.Dto.csproj", "{4F031CAB-9F9A-4D23-82D3-269C9695EA5A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Elevator.Dto", "Elevator.Dto\Elevator.Dto.csproj", "{4F031CAB-9F9A-4D23-82D3-269C9695EA5A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "5. Tests", "5. Tests", "{EC807088-6FE2-4815-A861-9C5156987080}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
