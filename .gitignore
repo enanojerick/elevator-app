@@ -13,3 +13,5 @@ Elevator.ConsoleApp/obj/*
 Elevator.Contracts/bin/*
 Elevator.Dto/bin/*
 .vs/*
+Elevator.Service.Tests/bin/*
+Elevator.Service.Tests/obj/*
