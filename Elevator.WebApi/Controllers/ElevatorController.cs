@@ -26,74 +26,93 @@ namespace Elevator.WebApi.Controllers
 
         [HttpPost]
         [Route("Run/Elevator/1")]
-        public string RunElevator1([FromBody] ClientRequest clientRequest)
+        public IActionResult RunElevator1([FromBody] ClientRequest clientRequest)
         {
             var elevator = _elevatorServices.GetElevatorById(1);
 
-            var requests = SetClientRequest(clientRequest, elevator.CarId.Value);
+            if (elevator != null)
+            {
+                var requests = SetClientRequest(clientRequest, elevator.CarId.Value);
 
-            _elevatorServices.MoveElevator(requests, elevator);
+                var results = _elevatorServices.MoveElevator(requests, elevator);
 
-            return elevator.CarName + " is now Stopped";
+                return results.Contains("Done") ? Ok(results) : BadRequest(results);
+            }
+
+            return BadRequest("Elevator Not Available");
         }
 
         [HttpPost]
         [Route("Run/Elevator/2")]
-        public string RunElevator2([FromBody] ClientRequest clientRequest)
+        public IActionResult RunElevator2([FromBody] ClientRequest clientRequest)
         {
             var elevator = _elevatorServices.GetElevatorById(2);
 
-            var requests = SetClientRequest(clientRequest, elevator.CarId.Value);
+            if (elevator != null)
+            {
+                var requests = SetClientRequest(clientRequest, elevator.CarId.Value);
 
-            _elevatorServices.MoveElevator(requests, elevator);
+                var results = _elevatorServices.MoveElevator(requests, elevator);
 
-            return elevator.CarName + " is now Stopped";
+                return results.Contains("Done") ? Ok(results) : BadRequest(results);
+            }
+
+            return BadRequest("Elevator Not Available");
         }
 
         [HttpPost]
         [Route("Run/Elevator/3")]
-        public string RunElevator3([FromBody] ClientRequest clientRequest)
+        public IActionResult RunElevator3([FromBody] ClientRequest clientRequest)
         {
             var elevator = _elevatorServices.GetElevatorById(3);
 
-            var requests = SetClientRequest(clientRequest, elevator.CarId.Value);
+            if (elevator != null)
+            {
+                var requests = SetClientRequest(clientRequest, elevator.CarId.Value);
 
-            _elevatorServices.MoveElevator(requests, elevator);
+                var results = _elevatorServices.MoveElevator(requests, elevator);
 
-            return elevator.CarName + " is now Stopped";
+                return results.Contains("Done") ? Ok(results) : BadRequest(results);
+            }
+
+            return BadRequest("Elevator Not Available");
         }
 
         [HttpPost]
         [Route("Run/Elevator/4")]
-        public string RunElevator4([FromBody] ClientRequest clientRequest)
+        public IActionResult RunElevator4([FromBody] ClientRequest clientRequest)
         {
             var elevator = _elevatorServices.GetElevatorById(4);
 
-            var requests = SetClientRequest(clientRequest, elevator.CarId.Value);
+            if (elevator != null)
+            {
+                var requests = SetClientRequest(clientRequest, elevator.CarId.Value);
 
-            _elevatorServices.MoveElevator(requests, elevator);
+                var results = _elevatorServices.MoveElevator(requests, elevator);
 
-            return elevator.CarName + " is now Stopped";
+                return results.Contains("Done") ? Ok(results) : BadRequest(results);
+            }
+
+            return BadRequest("Elevator Not Available");
         }
 
-        [HttpPost]
+        [HttpPut]
         [Route("Elevator/Queue")]
-        public string QueueElevator([FromBody] ElevatorRequestDto request)
+        public IActionResult QueueElevator([FromBody] ClientRequestWithCarId request)
         {
+            var elevatorRequest = SetClientRequestWithCarId(request);
+            var savedQueue = _elevatorServices.QueueElevatorRequest(elevatorRequest);
 
-            var savedQueue = _elevatorServices.QueueElevatorRequest(request);
-            var elevator = _elevatorServices.GetElevatorById(savedQueue.CarId);
-
-            return "Queue Added to : " + elevator.CarName;
+            return savedQueue.Contains("Success") ? Ok(savedQueue) : BadRequest(savedQueue);
         }
 
         [HttpPost]
         [Route("Reset/Elevator/Floor/{carId}")]
-        public string RunElevator3(int carId)
+        public IActionResult RunElevator3(int carId)
         {
             var elevator = _elevatorServices.ResetElevatorFloor(carId);
 
-            return elevator == null ? "No Elevator associated with the Id" : elevator.CarName + " reset to Top Floor";
+            return elevator == null ? BadRequest("No Elevator associated with the Id") : Ok(elevator.CarName + " reset to Top Floor");
         }
 
         private ElevatorRequestDto SetClientRequest(ClientRequest clientRequest, int carId)
@@ -101,6 +120,17 @@ namespace Elevator.WebApi.Controllers
             return new ElevatorRequestDto()
             {
                 CarId = carId,
+                RequestedDirection = clientRequest.RequestedDirection,
+                RequestedFromFloor = clientRequest.RequestedFromFloor,
+                RequestedFloors = clientRequest.RequestedFloors
+            };
+        }
+
+        private ElevatorRequestDto SetClientRequestWithCarId(ClientRequestWithCarId clientRequest)
+        {
+            return new ElevatorRequestDto()
+            {
+                CarId = clientRequest.CarId,
                 RequestedDirection = clientRequest.RequestedDirection,
                 RequestedFromFloor = clientRequest.RequestedFromFloor,
                 RequestedFloors = clientRequest.RequestedFloors

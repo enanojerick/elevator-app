@@ -6,4 +6,8 @@
         public int RequestedFromFloor { get; set; }
         public int[]? RequestedFloors { get; set; }
     }
+    public class ClientRequestWithCarId : ClientRequest
+    {
+        public int CarId { get; set; }
+    }
 }

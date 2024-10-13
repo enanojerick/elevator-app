@@ -5,9 +5,9 @@ namespace Elevator.Contracts
     public interface IElevatorServices
     {
         IList<ElevatorDto> GetElevators();
-        ElevatorDto GetElevatorById(int carId);
-        ElevatorRequestDto QueueElevatorRequest(ElevatorRequestDto request);
+        ElevatorDto? GetElevatorById(int carId);     
         ElevatorDto? ResetElevatorFloor(int carId);
-        void MoveElevator(ElevatorRequestDto request, ElevatorDto elevator);
+        string QueueElevatorRequest(ElevatorRequestDto request);
+        string MoveElevator(ElevatorRequestDto request, ElevatorDto elevator, bool IsTest = false);
     }
 }

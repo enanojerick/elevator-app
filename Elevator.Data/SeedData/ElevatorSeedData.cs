@@ -21,31 +21,31 @@ namespace Elevator.Data.SeedData
         {
             if (!_context.DbElevators.Any())
             {
-                IEnumerable<dbElevator> patients = new List<dbElevator>()
-            {
-                new dbElevator()
+                IEnumerable<dbElevator> elevators = new List<dbElevator>()
                 {
-                    CarName = "Elevator Car 1",
-                    CurrentFloor = 10
-                },
-                new dbElevator()
-                {
-                    CarName = "Elevator Car 2",
-                    CurrentFloor = 10
-                },
-                new dbElevator()
-                {
-                    CarName = "Elevator Car 3",
-                    CurrentFloor = 10
-                },
-                new dbElevator()
-                {
-                    CarName = "Elevator Car 4",
-                    CurrentFloor = 10
-                },
-            };
+                    new dbElevator()
+                    {
+                        CarName = "Elevator Car 1",
+                        CurrentFloor = 10
+                    },
+                    new dbElevator()
+                    {
+                        CarName = "Elevator Car 2",
+                        CurrentFloor = 10
+                    },
+                    new dbElevator()
+                    {
+                        CarName = "Elevator Car 3",
+                        CurrentFloor = 10
+                    },
+                    new dbElevator()
+                    {
+                        CarName = "Elevator Car 4",
+                        CurrentFloor = 10
+                    },
+                };
 
-                _context.DbElevators.AddRange(patients);
+                _context.DbElevators.AddRange(elevators);
                 _context.SaveChanges();
             }
         }
