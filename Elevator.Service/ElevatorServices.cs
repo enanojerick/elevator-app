@@ -143,6 +143,10 @@ namespace Elevator.Service
             {
                 return "Request Invalid Floors - does not have floors below 1st floor";
             }
+            else if (!Enum.IsDefined(typeof(ElevatorDirectionEnum), request.RequestedDirection))
+            {
+                return "Request Elevator Direction - Up(1) and Down(2) are the only options";
+            }
             else
             {
                 ElevatorRequestDto setRequest = new ElevatorRequestDto();
@@ -198,6 +202,10 @@ namespace Elevator.Service
             else if (request.RequestedFloors.Where(x => x <= 0).Count() > 0 || request.RequestedFromFloor <= 0)
             {
                 return "Request Invalid Floors - does not have floors below 1st floor";
+            }
+            else if (!Enum.IsDefined(typeof(ElevatorDirectionEnum), request.RequestedDirection))
+            {
+                return "Request Elevator Direction - Up(1) and Down(2) are the only options";
             }
             else
             {

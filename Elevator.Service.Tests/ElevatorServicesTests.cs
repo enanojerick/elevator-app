@@ -261,6 +261,26 @@ namespace Elevator.Service.Tests
         }
 
         [Fact]
+        public void QueueElevatorRequest_Direction_InvalidRequestDirection_ReturnErrorMessage()
+        {
+            var elevator = _ElevatorServices.GetElevatorById(2);
+
+            Assert.NotNull(elevator);
+
+            var elevatorRequest = new ElevatorRequestDto()
+            {
+                CarId = elevator.CarId.Value,
+                RequestedDirection = 9,
+                RequestedFromFloor = 5,
+                RequestedFloors = [4]
+            };
+
+            var result = _ElevatorServices.QueueElevatorRequest(elevatorRequest);
+
+            Assert.Equal("Request Elevator Direction - Up(1) and Down(2) are the only options", result);
+        }
+
+        [Fact]
         public void MoveElevator_Elevator3_ReturnElevatorUpdatedData()
         {
             var elevator = _ElevatorServices.GetElevatorById(3);
@@ -378,6 +398,30 @@ namespace Elevator.Service.Tests
             //Elevator current floor last stop
             Assert.Equal(10, elevator.CurrentFloor);
             Assert.Equal("Request Invalid Floors - does not have floors below 1st floor", result);
+        }
+
+        [Fact]
+        public void MoveElevator_Direction_InvalidRequestDirection_ReturnErrorMessage()
+        {
+            var elevator = _ElevatorServices.GetElevatorById(4);
+
+            Assert.NotNull(elevator);
+
+            var request = new ElevatorRequestDto()
+            {
+                CarId = elevator.CarId.Value,
+                RequestedDirection = 9,
+                RequestedFromFloor = 5,
+                RequestedFloors = [4]
+            };
+
+            var result = _ElevatorServices.MoveElevator(request, elevator, true);
+
+            elevator = _ElevatorServices.GetElevatorById(3);
+
+            //Elevator current floor last stop
+            Assert.Equal(10, elevator.CurrentFloor);
+            Assert.Equal("Request Elevator Direction - Up(1) and Down(2) are the only options", result);
         }
     }
 }
